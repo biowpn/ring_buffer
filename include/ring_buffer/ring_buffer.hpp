@@ -31,7 +31,7 @@ inline bool full(It first, It last, It head, It tail)
 }
 
 template <class It>
-inline bool empty(It first, It last, It head, It tail)
+inline bool empty(It head, It tail)
 {
     return head == tail;
 }

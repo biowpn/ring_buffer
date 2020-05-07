@@ -14,6 +14,8 @@ Simple header only ring buffer library. All algorithms are template functions. W
 - `prev()` : decrease the ring buffer iterator by one step
 - `empty()` : check if the buffer is empty
 - `full()` : check if the buffer is full
+- `front()` : access the first element
+- `back()` : access the last element
 - `push_back()` : add a new element at the end
 - `pop_back()` : remove the last element
 - `push_front()` : insert a new element at the beginning
