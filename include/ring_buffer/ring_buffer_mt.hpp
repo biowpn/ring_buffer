@@ -34,7 +34,7 @@ namespace ring_buffer
             std::memcpy(ring.buf, (const unsigned char *)src + len - i_end, i_end);
         }
         for (auto ho = head_old;
-             std::atomic_compare_exchange_weak(ring.head_commited, &ho, head_new);
+             !std::atomic_compare_exchange_weak(ring.head_commited, &ho, head_new);
              ho = head_old)
             ;
         return len;
