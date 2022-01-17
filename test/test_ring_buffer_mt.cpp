@@ -2,10 +2,54 @@
 #include <ring_buffer/ring_buffer_mt.hpp>
 
 #include <thread>
+#include <cctype>
 #include <iostream>
 #include <vector>
 
 using namespace ring_buffer;
+
+void check_content(const char *buf, std::size_t len)
+{
+    for (std::size_t i = 0; i < len;)
+    {
+        if (!std::isdigit(buf[i]))
+        {
+            printf("\nFailed: position %zu is not digit: '%c'\n", buf[i]);
+            throw std::runtime_error("");
+        }
+        std::size_t n = buf[i] - '0';
+        // expect the next (n - 1) bytes to be the same as this byte
+        for (std::size_t j = i + 1; j < i + n; ++j)
+        {
+            if (buf[j] != buf[i])
+            {
+                printf("\nFailed: position %zu got '%c' instead of '%c'\n", j, buf[j], buf[i]);
+                throw std::runtime_error("");
+            }
+        }
+        i += n;
+    }
+}
+
+void reader(ring_buffer_mt ring /*by value is ok*/, std::size_t total)
+{
+    std::vector<char> rbuf(total);
+    std::size_t tail{0};
+    std::size_t n_read = 0;
+    auto dst = rbuf.data();
+    for (std::size_t n; n_read < total; n_read += n)
+    {
+        while ((n = read(dst, total, ring, tail)) == 0)
+            ;
+        check_content(dst, n);
+    }
+    if (n_read != total)
+    {
+        printf("Failed: read more bytes than expected (%zu vs %zu)\n", n_read, total);
+        throw std::runtime_error("");
+    }
+    printf("reader has verified all %zu bytes \n", total);
+}
 
 void writer(ring_buffer_mt ring /*by value is ok*/, const char *msg, std::size_t repeat)
 {
@@ -16,37 +60,8 @@ void writer(ring_buffer_mt ring /*by value is ok*/, const char *msg, std::size_t
     }
 }
 
-void checker(const std::vector<char> &buf)
-{
-    for (std::size_t i = 0; i < buf.size();)
-    {
-        auto c = buf[i];
-        std::cout << c;
-        if ('1' <= c && c <= '4')
-        {
-            std::size_t n = c - '0';
-            // expect the next (n - 1) bytes to be the same as this byte
-            for (std::size_t j = 1; j < n; ++j)
-            {
-                auto c2 = buf[j];
-                std::cout << c2;
-                if (c2 != c)
-                {
-                    printf("\nFailed: position %zu got '%c' instead of '%c'\n", i + j, c2, c);
-                    throw std::runtime_error("Bad byte");
-                }
-            }
-            i += n;
-        }
-        else
-        {
-            throw std::runtime_error("Not digit");
-        }
-    }
-}
-
 // the idea is to have 4 writers write "1" "22" "333" "4444" respectively,
-// then check if the content are correct
+// and have a reader to read and check whether the content is correct
 void test_ring_buffer_mt()
 {
     // all writers write the same amount of bytes
@@ -57,18 +72,22 @@ void test_ring_buffer_mt()
     ring_buffer_mt ring{(unsigned char *)buf.data(), buf.size(), &head_committed, &head_pending};
 
     const char *messages[]{"1", "22", "333", "4444"};
-    std::thread workers[4]{};
+
+    std::thread treader(reader, ring, buf.size());
+    std::thread tworkers[4]{};
     for (std::size_t i = 0; i < 4; ++i)
     {
         auto msg = messages[i];
         auto repeat = payload_per_writer / std::strlen(msg);
-        workers[i] = std::thread(writer, ring, msg, repeat);
+        tworkers[i] = std::thread(writer, ring, msg, repeat);
     }
     for (std::size_t i = 0; i < 4; ++i)
     {
-        workers[i].join();
+        tworkers[i].join();
     }
-    checker(buf);
+    treader.join();
+
+    printf("ring_buffer_mt test passed\n");
 }
 
 int main()
