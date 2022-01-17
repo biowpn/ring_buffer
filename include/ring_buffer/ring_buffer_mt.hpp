@@ -71,6 +71,7 @@ namespace ring_buffer
             std::memcpy(dst, ring.buf + i_begin, ring.capacity - i_begin);
             std::memcpy((unsigned char *)dst + len - i_end, ring.buf, i_end);
         }
+        tail = head;
         return len;
     }
 }
