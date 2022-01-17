@@ -35,17 +35,16 @@ void reader(ring_buffer_mt ring /*by value is ok*/, std::size_t total)
 {
     std::vector<char> rbuf(total);
     std::size_t tail{0};
-    std::size_t n_read = 0;
     auto dst = rbuf.data();
-    for (std::size_t n; n_read < total; n_read += n)
+    for (std::size_t n; tail < total;)
     {
         while ((n = read(dst, total, ring, tail)) == 0)
             ;
         check_content(dst, n);
     }
-    if (n_read != total)
+    if (tail != total)
     {
-        printf("Failed: read more bytes than expected (%zu vs %zu)\n", n_read, total);
+        printf("Failed: read more bytes than expected (%zu vs %zu)\n", tail, total);
         throw std::runtime_error("");
     }
     printf("reader has verified all %zu bytes \n", total);
