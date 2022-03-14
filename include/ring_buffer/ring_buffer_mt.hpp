@@ -14,8 +14,8 @@ namespace ring_buffer
     {
         unsigned char *buf;                       //< Point to a block of memory
         std::size_t capacity;                     //< Size of the block of memory
-        std::atomic<std::size_t> *head_committed; //< Initially, head_committed == head_pending == 0
-        std::atomic<std::size_t> *head_pending;
+        std::atomic<std::size_t> *head_committed; //< Initially, *head_committed == *head_pending == 0
+        std::atomic<std::size_t> *head_pending;   //< when no writer is writing: *head_committed == *head_pending
     };
 
     /// \brief Write \a len bytes from \a src to ring buffer \a ring.
@@ -23,7 +23,7 @@ namespace ring_buffer
     /// \param len size of the data; must not exceed the capacity of the \a ring.
     /// \param ring the ring buffer to write data to
     /// \return \a len
-    std::size_t write(const void *src, std::size_t len, ring_buffer_mt &ring)
+    inline std::size_t write(const void *src, std::size_t len, ring_buffer_mt &ring)
     {
         auto head_old = ring.head_pending->fetch_add(len);
         auto head_new = head_old + len;
@@ -51,7 +51,7 @@ namespace ring_buffer
     /// \param ring the ring buffer to read data from
     /// \param tail position of the individual consumer
     /// \return the actual number of bytes read
-    std::size_t read(void *dst, std::size_t len, ring_buffer_mt &ring, std::size_t &tail)
+    inline std::size_t read(void *dst, std::size_t len, const ring_buffer_mt &ring, std::size_t &tail)
     {
         auto head = ring.head_committed->load();
         if (tail >= head)
